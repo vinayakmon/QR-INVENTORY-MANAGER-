@@ -23,6 +23,14 @@
           <input name="displayName" autocomplete="name" placeholder="Your full name" />
         </label>
 
+        <label id="roleField" hidden>
+          Account type
+          <select name="role">
+            <option value="operator">Operator - create and update QR inventory</option>
+            <option value="viewer">Viewer - view inventory only</option>
+          </select>
+        </label>
+
         <label>
           Username
           <input name="username" autocomplete="username" placeholder="username or email, no spaces" required />

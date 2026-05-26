@@ -6,6 +6,7 @@ const authCopy = document.querySelector("#authCopy");
 const authSubmit = document.querySelector("#authSubmit");
 const authSwitch = document.querySelector("#authSwitch");
 const displayNameField = document.querySelector("#displayNameField");
+const roleField = document.querySelector("#roleField");
 const appShell = document.querySelector("#appShell");
 const logoutButton = document.querySelector("#logoutButton");
 const userName = document.querySelector("#userName");
@@ -49,6 +50,7 @@ function setAuthMode(mode) {
   authSubmit.textContent = isSignup ? "Create Account" : "Log In";
   authSwitch.textContent = isSignup ? "Back to login" : "Create a new account";
   displayNameField.hidden = !isSignup;
+  roleField.hidden = !isSignup;
   displayNameField.querySelector("input").required = isSignup;
   showLoginMessage("");
 }

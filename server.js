@@ -255,6 +255,8 @@ async function handleApi(req, res) {
     const username = cleanText(body.username).toLowerCase();
     const displayName = cleanText(body.displayName);
     const password = String(body.password || "");
+    const requestedRole = cleanText(body.role) || "operator";
+    const role = ["operator", "viewer"].includes(requestedRole) ? requestedRole : "operator";
 
     if (!/^[a-z0-9._@-]{3,64}$/.test(username)) {
       throw new Error("Username must be 3-64 characters with no spaces. You can use an email, letters, numbers, dot, dash, or underscore.");
@@ -276,7 +278,7 @@ async function handleApi(req, res) {
       return;
     }
 
-    const user = createUser(username, displayName, "viewer", password);
+    const user = createUser(username, displayName, role, password);
     userDb.users.push(user);
     await writeUsers(userDb);
 
