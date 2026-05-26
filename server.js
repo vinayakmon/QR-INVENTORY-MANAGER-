@@ -63,6 +63,10 @@ async function readUsers() {
   return JSON.parse(raw);
 }
 
+async function writeUsers(data) {
+  await fs.writeFile(USERS_FILE, JSON.stringify(data, null, 2));
+}
+
 function sendJson(res, statusCode, payload) {
   res.writeHead(statusCode, { "Content-Type": "application/json; charset=utf-8" });
   res.end(JSON.stringify(payload));
@@ -239,6 +243,56 @@ async function handleApi(req, res) {
     });
 
     res.writeHead(200, {
+      "Content-Type": "application/json; charset=utf-8",
+      "Set-Cookie": `session=${encodeURIComponent(token)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=28800`
+    });
+    res.end(JSON.stringify(safeUser));
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/signup") {
+    const body = await parseBody(req);
+    const username = cleanText(body.username).toLowerCase();
+    const displayName = cleanText(body.displayName);
+    const password = String(body.password || "");
+
+    if (!/^[a-z0-9_]{3,24}$/.test(username)) {
+      throw new Error("Username must be 3-24 characters and use only letters, numbers, or underscore.");
+    }
+
+    if (!displayName) {
+      throw new Error("Display name is required.");
+    }
+
+    if (password.length < 6) {
+      throw new Error("Password must be at least 6 characters.");
+    }
+
+    const userDb = await readUsers();
+    const usernameExists = userDb.users.some(entry => entry.username.toLowerCase() === username);
+
+    if (usernameExists) {
+      sendJson(res, 409, { error: "That username is already taken." });
+      return;
+    }
+
+    const user = createUser(username, displayName, "viewer", password);
+    userDb.users.push(user);
+    await writeUsers(userDb);
+
+    const safeUser = {
+      id: user.id,
+      username: user.username,
+      displayName: user.displayName,
+      role: user.role,
+      permissions: rolePermissions[user.role] || []
+    };
+    const token = signSession({
+      userId: user.id,
+      expiresAt: Date.now() + 1000 * 60 * 60 * 8
+    });
+
+    res.writeHead(201, {
       "Content-Type": "application/json; charset=utf-8",
       "Set-Cookie": `session=${encodeURIComponent(token)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=28800`
     });

@@ -1,6 +1,11 @@
 const loginScreen = document.querySelector("#loginScreen");
 const loginForm = document.querySelector("#loginForm");
 const loginMessage = document.querySelector("#loginMessage");
+const authTitle = document.querySelector("#authTitle");
+const authCopy = document.querySelector("#authCopy");
+const authSubmit = document.querySelector("#authSubmit");
+const authSwitch = document.querySelector("#authSwitch");
+const displayNameField = document.querySelector("#displayNameField");
 const appShell = document.querySelector("#appShell");
 const logoutButton = document.querySelector("#logoutButton");
 const userName = document.querySelector("#userName");
@@ -18,6 +23,7 @@ const printQr = document.querySelector("#printQr");
 
 let inventory = [];
 let currentUser = null;
+let authMode = "login";
 
 function can(permission) {
   return Boolean(currentUser?.permissions?.includes(permission));
@@ -31,6 +37,20 @@ function showMessage(text, isError = false) {
 function showLoginMessage(text, isError = false) {
   loginMessage.textContent = text;
   loginMessage.classList.toggle("error", isError);
+}
+
+function setAuthMode(mode) {
+  authMode = mode;
+  const isSignup = authMode === "signup";
+  authTitle.textContent = isSignup ? "Create Account" : "Inventory Login";
+  authCopy.textContent = isSignup
+    ? "New accounts are created as viewer users. An admin can decide who should get inventory edit access."
+    : "Sign in with your assigned role to manage QR inventory batches.";
+  authSubmit.textContent = isSignup ? "Create Account" : "Log In";
+  authSwitch.textContent = isSignup ? "Back to login" : "Create a new account";
+  displayNameField.hidden = !isSignup;
+  displayNameField.querySelector("input").required = isSignup;
+  showLoginMessage("");
 }
 
 async function api(path, options = {}) {
@@ -175,9 +195,10 @@ function openQr(item) {
 loginForm.addEventListener("submit", async event => {
   event.preventDefault();
   const formData = new FormData(loginForm);
+  const endpoint = authMode === "signup" ? "/api/signup" : "/api/login";
 
   try {
-    currentUser = await api("/api/login", {
+    currentUser = await api(endpoint, {
       method: "POST",
       body: JSON.stringify(Object.fromEntries(formData))
     });
@@ -188,6 +209,11 @@ loginForm.addEventListener("submit", async event => {
   } catch (error) {
     showLoginMessage(error.message, true);
   }
+});
+
+authSwitch.addEventListener("click", () => {
+  loginForm.reset();
+  setAuthMode(authMode === "signup" ? "login" : "signup");
 });
 
 logoutButton.addEventListener("click", async () => {
@@ -280,3 +306,4 @@ async function boot() {
 }
 
 boot().catch(error => showLoginMessage(error.message, true));
+setAuthMode("login");

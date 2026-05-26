@@ -299,6 +299,17 @@ button:hover {
   transform: translateY(-1px);
 }
 
+.ghost-button {
+  background: #ffffff;
+  color: var(--accent-strong);
+  border: 1px solid #bae6fd;
+}
+
+.ghost-button:hover {
+  background: var(--accent-soft);
+  box-shadow: none;
+}
+
 .delete-button {
   background: #fff7f6;
   color: var(--danger);
