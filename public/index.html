@@ -10,19 +10,36 @@
   </head>
   <body>
     <header class="topbar">
-      <div>
+      <div class="brand-block">
+        <div class="brand-mark">QI</div>
+        <div>
         <p class="eyebrow">Batch inventory control</p>
         <h1>QR Inventory Management</h1>
+        <p class="subhead">Create QR labels, track batch stock, and update quantities from one focused workspace.</p>
+        </div>
       </div>
-      <div class="status-pill">
-        <span id="itemCount">0</span>
-        <span>batches</span>
+      <div class="summary-strip">
+        <div class="summary-item">
+          <span id="itemCount">0</span>
+          <small>Batches</small>
+        </div>
+        <div class="summary-item">
+          <span id="totalQuantity">0</span>
+          <small>Total units</small>
+        </div>
+        <div class="summary-item">
+          <span id="emptyCount">0</span>
+          <small>Empty</small>
+        </div>
       </div>
     </header>
 
     <main class="layout">
       <section class="panel form-panel" aria-labelledby="newBatchTitle">
-        <h2 id="newBatchTitle">Create QR Batch</h2>
+        <div class="section-title">
+          <span class="section-icon">+</span>
+          <h2 id="newBatchTitle">Create QR Batch</h2>
+        </div>
         <form id="itemForm">
           <label>
             Product name
@@ -50,15 +67,18 @@
             <textarea name="notes" rows="3" placeholder="Supplier, size, batch details"></textarea>
           </label>
 
-          <button type="submit">Generate QR and Save</button>
+          <button type="submit">Generate QR Label</button>
         </form>
       </section>
 
       <section class="inventory-area" aria-labelledby="inventoryTitle">
         <div class="inventory-head">
           <div>
-            <h2 id="inventoryTitle">Inventory Monitor</h2>
-            <p>Search a product, open its QR label, or update quantity after stock moves.</p>
+            <div class="section-title">
+              <span class="section-icon">#</span>
+              <h2 id="inventoryTitle">Inventory Monitor</h2>
+            </div>
+            <p>Search products, open QR labels, and update stock after every movement.</p>
           </div>
           <input id="searchInput" class="search" placeholder="Search product, QR code, location..." />
         </div>

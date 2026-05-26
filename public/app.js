@@ -3,6 +3,8 @@ const inventoryList = document.querySelector("#inventoryList");
 const searchInput = document.querySelector("#searchInput");
 const message = document.querySelector("#message");
 const itemCount = document.querySelector("#itemCount");
+const totalQuantity = document.querySelector("#totalQuantity");
+const emptyCount = document.querySelector("#emptyCount");
 const qrDialog = document.querySelector("#qrDialog");
 const closeDialog = document.querySelector("#closeDialog");
 const printQr = document.querySelector("#printQr");
@@ -47,6 +49,8 @@ function quantityClass(item) {
 
 function renderInventory() {
   itemCount.textContent = inventory.length;
+  totalQuantity.textContent = inventory.reduce((sum, item) => sum + item.currentQuantity, 0);
+  emptyCount.textContent = inventory.filter(item => item.currentQuantity === 0).length;
 
   if (!inventory.length) {
     inventoryList.innerHTML = `<p class="item-notes">No batches found. Create your first QR batch from the form.</p>`;
