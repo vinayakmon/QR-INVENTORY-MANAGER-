@@ -1,0 +1,24 @@
+{
+  "items": [
+    {
+      "id": "0b1417f2-4ce2-4f62-9ef4-ec2c86591cb9",
+      "code": "QRINV-20260526-3194DA",
+      "productName": "NUT",
+      "unit": "1",
+      "initialQuantity": 12,
+      "currentQuantity": 12,
+      "location": "BOX 1",
+      "notes": "ABC MANUFACTURER",
+      "createdAt": "2026-05-26T09:11:52.776Z",
+      "updatedAt": "2026-05-26T09:11:52.776Z",
+      "history": [
+        {
+          "action": "created",
+          "quantity": 12,
+          "note": "Batch created",
+          "at": "2026-05-26T09:11:52.776Z"
+        }
+      ]
+    }
+  ]
+}

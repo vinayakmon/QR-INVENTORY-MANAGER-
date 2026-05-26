@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>QR Inventory Management</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Batch inventory control</p>
+        <h1>QR Inventory Management</h1>
+      </div>
+      <div class="status-pill">
+        <span id="itemCount">0</span>
+        <span>batches</span>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="panel form-panel" aria-labelledby="newBatchTitle">
+        <h2 id="newBatchTitle">Create QR Batch</h2>
+        <form id="itemForm">
+          <label>
+            Product name
+            <input name="productName" placeholder="Example: Hex nut M8" required />
+          </label>
+
+          <div class="two-column">
+            <label>
+              Quantity
+              <input name="initialQuantity" type="number" min="0" step="1" placeholder="100" required />
+            </label>
+            <label>
+              Unit
+              <input name="unit" placeholder="pcs, kg, box" required />
+            </label>
+          </div>
+
+          <label>
+            Location
+            <input name="location" placeholder="Rack A2 / Store room" />
+          </label>
+
+          <label>
+            Notes
+            <textarea name="notes" rows="3" placeholder="Supplier, size, batch details"></textarea>
+          </label>
+
+          <button type="submit">Generate QR and Save</button>
+        </form>
+      </section>
+
+      <section class="inventory-area" aria-labelledby="inventoryTitle">
+        <div class="inventory-head">
+          <div>
+            <h2 id="inventoryTitle">Inventory Monitor</h2>
+            <p>Search a product, open its QR label, or update quantity after stock moves.</p>
+          </div>
+          <input id="searchInput" class="search" placeholder="Search product, QR code, location..." />
+        </div>
+
+        <div id="message" class="message" role="status"></div>
+        <div id="inventoryList" class="inventory-list"></div>
+      </section>
+    </main>
+
+    <dialog id="qrDialog">
+      <div class="dialog-head">
+        <h2 id="qrTitle">QR Label</h2>
+        <button id="closeDialog" class="icon-button" type="button" aria-label="Close">x</button>
+      </div>
+      <div class="qr-print-area">
+        <div id="qrCode"></div>
+        <div class="qr-details">
+          <strong id="qrProduct"></strong>
+          <span id="qrCodeText"></span>
+          <span id="qrQuantity"></span>
+          <span id="qrLocation"></span>
+        </div>
+      </div>
+      <button id="printQr" type="button">Print QR Label</button>
+    </dialog>
+  </body>
+</html>

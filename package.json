@@ -1,0 +1,16 @@
+{
+  "name": "qr-inventory-management",
+  "version": "1.0.0",
+  "description": "Beginner-friendly QR inventory management starter website.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [
+    "inventory",
+    "qr",
+    "warehouse"
+  ],
+  "author": "",
+  "license": "MIT"
+}
