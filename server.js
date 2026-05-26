@@ -256,8 +256,8 @@ async function handleApi(req, res) {
     const displayName = cleanText(body.displayName);
     const password = String(body.password || "");
 
-    if (!/^[a-z0-9_]{3,24}$/.test(username)) {
-      throw new Error("Username must be 3-24 characters and use only letters, numbers, or underscore.");
+    if (!/^[a-z0-9._@-]{3,64}$/.test(username)) {
+      throw new Error("Username must be 3-64 characters with no spaces. You can use an email, letters, numbers, dot, dash, or underscore.");
     }
 
     if (!displayName) {
