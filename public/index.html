@@ -9,6 +9,31 @@
     <script src="/app.js" defer></script>
   </head>
   <body>
+    <section id="loginScreen" class="login-screen">
+      <form id="loginForm" class="login-card">
+        <div class="brand-mark">QI</div>
+        <div>
+          <p class="eyebrow">Secure access</p>
+          <h1>Inventory Login</h1>
+          <p class="login-copy">Sign in with your assigned role to manage QR inventory batches.</p>
+        </div>
+
+        <label>
+          Username
+          <input name="username" autocomplete="username" placeholder="admin, operator, or viewer" required />
+        </label>
+
+        <label>
+          Password
+          <input name="password" type="password" autocomplete="current-password" placeholder="Enter password" required />
+        </label>
+
+        <button type="submit">Log In</button>
+        <p id="loginMessage" class="message"></p>
+      </form>
+    </section>
+
+    <div id="appShell" class="app-shell" hidden>
     <header class="topbar">
       <div class="brand-block">
         <div class="brand-mark">QI</div>
@@ -17,6 +42,11 @@
         <h1>QR Inventory Management</h1>
         <p class="subhead">Create QR labels, track batch stock, and update quantities from one focused workspace.</p>
         </div>
+      </div>
+      <div class="user-panel">
+        <span id="userName">User</span>
+        <small id="userRole">role</small>
+        <button id="logoutButton" type="button">Logout</button>
       </div>
       <div class="summary-strip">
         <div class="summary-item">
@@ -104,5 +134,6 @@
       </div>
       <button id="printQr" type="button">Print QR Label</button>
     </dialog>
+    </div>
   </body>
 </html>

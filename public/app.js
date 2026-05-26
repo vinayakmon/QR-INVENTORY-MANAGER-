@@ -1,3 +1,10 @@
+const loginScreen = document.querySelector("#loginScreen");
+const loginForm = document.querySelector("#loginForm");
+const loginMessage = document.querySelector("#loginMessage");
+const appShell = document.querySelector("#appShell");
+const logoutButton = document.querySelector("#logoutButton");
+const userName = document.querySelector("#userName");
+const userRole = document.querySelector("#userRole");
 const itemForm = document.querySelector("#itemForm");
 const inventoryList = document.querySelector("#inventoryList");
 const searchInput = document.querySelector("#searchInput");
@@ -10,10 +17,20 @@ const closeDialog = document.querySelector("#closeDialog");
 const printQr = document.querySelector("#printQr");
 
 let inventory = [];
+let currentUser = null;
+
+function can(permission) {
+  return Boolean(currentUser?.permissions?.includes(permission));
+}
 
 function showMessage(text, isError = false) {
   message.textContent = text;
   message.classList.toggle("error", isError);
+}
+
+function showLoginMessage(text, isError = false) {
+  loginMessage.textContent = text;
+  loginMessage.classList.toggle("error", isError);
 }
 
 async function api(path, options = {}) {
@@ -47,6 +64,17 @@ function quantityClass(item) {
   return "good";
 }
 
+function updateAccessView() {
+  appShell.hidden = !currentUser;
+  loginScreen.hidden = Boolean(currentUser);
+
+  if (!currentUser) return;
+
+  userName.textContent = currentUser.displayName;
+  userRole.textContent = currentUser.role;
+  itemForm.closest(".form-panel").hidden = !can("create");
+}
+
 function renderInventory() {
   itemCount.textContent = inventory.length;
   totalQuantity.textContent = inventory.reduce((sum, item) => sum + item.currentQuantity, 0);
@@ -60,6 +88,22 @@ function renderInventory() {
   inventoryList.innerHTML = inventory
     .map(item => {
       const latest = item.history[0];
+      const updateControls = can("update")
+        ? `
+          <select name="mode" aria-label="Quantity update type">
+            <option value="remove">Remove used quantity</option>
+            <option value="add">Add received quantity</option>
+            <option value="set">Set exact quantity</option>
+          </select>
+          <input name="amount" type="number" min="0" step="1" placeholder="Qty" required />
+          <input class="wide" name="note" placeholder="Reason: issued to job, stock correction..." />
+          <button type="submit">Update</button>
+        `
+        : "";
+      const deleteControl = can("delete")
+        ? `<button class="wide delete-button" type="button" data-delete="${item.id}">Delete Batch</button>`
+        : "";
+
       return `
         <article class="item-card">
           <div>
@@ -79,16 +123,9 @@ function renderInventory() {
           </div>
 
           <form class="actions" data-id="${item.id}">
-            <select name="mode" aria-label="Quantity update type">
-              <option value="remove">Remove used quantity</option>
-              <option value="add">Add received quantity</option>
-              <option value="set">Set exact quantity</option>
-            </select>
-            <input name="amount" type="number" min="0" step="1" placeholder="Qty" required />
-            <input class="wide" name="note" placeholder="Reason: issued to job, stock correction..." />
-            <button type="submit">Update</button>
+            ${updateControls}
             <button type="button" data-qr="${item.id}">Show QR</button>
-            <button class="wide delete-button" type="button" data-delete="${item.id}">Delete Batch</button>
+            ${deleteControl}
           </form>
         </article>
       `;
@@ -134,6 +171,32 @@ function openQr(item) {
 
   qrDialog.showModal();
 }
+
+loginForm.addEventListener("submit", async event => {
+  event.preventDefault();
+  const formData = new FormData(loginForm);
+
+  try {
+    currentUser = await api("/api/login", {
+      method: "POST",
+      body: JSON.stringify(Object.fromEntries(formData))
+    });
+    loginForm.reset();
+    showLoginMessage("");
+    updateAccessView();
+    await loadInventory();
+  } catch (error) {
+    showLoginMessage(error.message, true);
+  }
+});
+
+logoutButton.addEventListener("click", async () => {
+  await api("/api/logout", { method: "POST", body: "{}" });
+  currentUser = null;
+  inventory = [];
+  showMessage("");
+  updateAccessView();
+});
 
 itemForm.addEventListener("submit", async event => {
   event.preventDefault();
@@ -207,4 +270,13 @@ searchInput.addEventListener("input", () => {
 closeDialog.addEventListener("click", () => qrDialog.close());
 printQr.addEventListener("click", () => window.print());
 
-loadInventory().catch(error => showMessage(error.message, true));
+async function boot() {
+  currentUser = await api("/api/me");
+  updateAccessView();
+
+  if (currentUser) {
+    await loadInventory();
+  }
+}
+
+boot().catch(error => showLoginMessage(error.message, true));

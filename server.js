@@ -6,7 +6,15 @@ const crypto = require("crypto");
 const PORT = process.env.PORT || 3000;
 const DATA_DIR = path.join(__dirname, "data");
 const DB_FILE = path.join(DATA_DIR, "inventory.json");
+const USERS_FILE = path.join(DATA_DIR, "users.json");
 const PUBLIC_DIR = path.join(__dirname, "public");
+const SESSION_SECRET = process.env.SESSION_SECRET || "change-this-secret-before-production";
+
+const rolePermissions = {
+  admin: ["read", "create", "update", "delete"],
+  operator: ["read", "create", "update"],
+  viewer: ["read"]
+};
 
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
@@ -26,6 +34,17 @@ async function ensureDatabase() {
   } catch {
     await fs.writeFile(DB_FILE, JSON.stringify({ items: [] }, null, 2));
   }
+
+  try {
+    await fs.access(USERS_FILE);
+  } catch {
+    const users = [
+      createUser("admin", "Admin", "admin", "admin123"),
+      createUser("operator", "Operator", "operator", "operator123"),
+      createUser("viewer", "Viewer", "viewer", "viewer123")
+    ];
+    await fs.writeFile(USERS_FILE, JSON.stringify({ users }, null, 2));
+  }
 }
 
 async function readDatabase() {
@@ -36,6 +55,12 @@ async function readDatabase() {
 
 async function writeDatabase(data) {
   await fs.writeFile(DB_FILE, JSON.stringify(data, null, 2));
+}
+
+async function readUsers() {
+  await ensureDatabase();
+  const raw = await fs.readFile(USERS_FILE, "utf8");
+  return JSON.parse(raw);
 }
 
 function sendJson(res, statusCode, payload) {
@@ -74,6 +99,92 @@ function cleanText(value) {
   return String(value || "").trim();
 }
 
+function hashPassword(password, salt = crypto.randomBytes(16).toString("hex")) {
+  const hash = crypto.pbkdf2Sync(password, salt, 100000, 64, "sha512").toString("hex");
+  return `${salt}:${hash}`;
+}
+
+function verifyPassword(password, storedHash) {
+  const [salt, originalHash] = storedHash.split(":");
+  const hash = hashPassword(password, salt).split(":")[1];
+  return crypto.timingSafeEqual(Buffer.from(hash, "hex"), Buffer.from(originalHash, "hex"));
+}
+
+function createUser(username, displayName, role, password) {
+  return {
+    id: crypto.randomUUID(),
+    username,
+    displayName,
+    role,
+    passwordHash: hashPassword(password),
+    createdAt: new Date().toISOString()
+  };
+}
+
+function parseCookies(req) {
+  return Object.fromEntries(
+    String(req.headers.cookie || "")
+      .split(";")
+      .filter(Boolean)
+      .map(cookie => {
+        const [name, ...rest] = cookie.trim().split("=");
+        return [name, decodeURIComponent(rest.join("="))];
+      })
+  );
+}
+
+function signSession(payload) {
+  const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  const signature = crypto.createHmac("sha256", SESSION_SECRET).update(body).digest("base64url");
+  return `${body}.${signature}`;
+}
+
+function verifySession(token) {
+  if (!token || !token.includes(".")) return null;
+  const [body, signature] = token.split(".");
+  const expectedSignature = crypto.createHmac("sha256", SESSION_SECRET).update(body).digest("base64url");
+
+  if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature))) {
+    return null;
+  }
+
+  const payload = JSON.parse(Buffer.from(body, "base64url").toString("utf8"));
+  if (payload.expiresAt < Date.now()) return null;
+  return payload;
+}
+
+async function getCurrentUser(req) {
+  const cookies = parseCookies(req);
+  const session = verifySession(cookies.session);
+  if (!session) return null;
+
+  const userDb = await readUsers();
+  const user = userDb.users.find(entry => entry.id === session.userId);
+  if (!user) return null;
+
+  return {
+    id: user.id,
+    username: user.username,
+    displayName: user.displayName,
+    role: user.role,
+    permissions: rolePermissions[user.role] || []
+  };
+}
+
+function requirePermission(user, permission) {
+  if (!user) {
+    const error = new Error("Please log in to continue.");
+    error.statusCode = 401;
+    throw error;
+  }
+
+  if (!user.permissions.includes(permission)) {
+    const error = new Error("You do not have permission for this action.");
+    error.statusCode = 403;
+    throw error;
+  }
+}
+
 function makeItemCode() {
   const date = new Date();
   const yyyy = date.getFullYear();
@@ -96,8 +207,56 @@ function validateQuantity(value, fieldName) {
 async function handleApi(req, res) {
   const url = new URL(req.url, `http://${req.headers.host}`);
   const parts = url.pathname.split("/").filter(Boolean);
+  const currentUser = await getCurrentUser(req);
+
+  if (req.method === "GET" && url.pathname === "/api/me") {
+    sendJson(res, 200, currentUser);
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/login") {
+    const body = await parseBody(req);
+    const username = cleanText(body.username).toLowerCase();
+    const password = String(body.password || "");
+    const userDb = await readUsers();
+    const user = userDb.users.find(entry => entry.username.toLowerCase() === username);
+
+    if (!user || !verifyPassword(password, user.passwordHash)) {
+      sendJson(res, 401, { error: "Invalid username or password." });
+      return;
+    }
+
+    const safeUser = {
+      id: user.id,
+      username: user.username,
+      displayName: user.displayName,
+      role: user.role,
+      permissions: rolePermissions[user.role] || []
+    };
+    const token = signSession({
+      userId: user.id,
+      expiresAt: Date.now() + 1000 * 60 * 60 * 8
+    });
+
+    res.writeHead(200, {
+      "Content-Type": "application/json; charset=utf-8",
+      "Set-Cookie": `session=${encodeURIComponent(token)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=28800`
+    });
+    res.end(JSON.stringify(safeUser));
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/logout") {
+    res.writeHead(200, {
+      "Content-Type": "application/json; charset=utf-8",
+      "Set-Cookie": "session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0"
+    });
+    res.end(JSON.stringify({ ok: true }));
+    return;
+  }
 
   if (req.method === "GET" && url.pathname === "/api/items") {
+    requirePermission(currentUser, "read");
     const db = await readDatabase();
     const search = cleanText(url.searchParams.get("search")).toLowerCase();
     const items = search
@@ -114,6 +273,7 @@ async function handleApi(req, res) {
   }
 
   if (req.method === "POST" && url.pathname === "/api/items") {
+    requirePermission(currentUser, "create");
     const body = await parseBody(req);
     const productName = cleanText(body.productName);
     const unit = cleanText(body.unit);
@@ -164,11 +324,13 @@ async function handleApi(req, res) {
     }
 
     if (req.method === "GET") {
+      requirePermission(currentUser, "read");
       sendJson(res, 200, item);
       return;
     }
 
     if (req.method === "PATCH" && parts[3] === "quantity") {
+      requirePermission(currentUser, "update");
       const body = await parseBody(req);
       const mode = cleanText(body.mode);
       const amount = validateQuantity(body.amount, "Quantity");
@@ -203,6 +365,7 @@ async function handleApi(req, res) {
     }
 
     if (req.method === "DELETE") {
+      requirePermission(currentUser, "delete");
       db.items.splice(itemIndex, 1);
       await writeDatabase(db);
       sendJson(res, 200, { ok: true });
@@ -247,7 +410,7 @@ const server = http.createServer(async (req, res) => {
       await serveStatic(req, res);
     }
   } catch (error) {
-    sendJson(res, 400, { error: error.message || "Something went wrong." });
+    sendJson(res, error.statusCode || 400, { error: error.message || "Something went wrong." });
   }
 });
 
